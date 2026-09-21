@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Directory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Bricolage+Grotesque:opsz,wght@12..96,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #eef2f6;
+    --panel: #ffffff;
+    --ink: #14213d;
+    --muted: #5b6b82;
+    --line: #d5dde8;
+    --accent: #2b59ff;
+    --accent-ink: #ffffff;
+    --danger: #b42318;
+    --ok: #12805c;
+    --focus: #2b59ff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1626;
+      --panel: #16213a;
+      --ink: #e8eefc;
+      --muted: #9db0cf;
+      --line: #2a3a5c;
+      --accent: #6d8dff;
+      --accent-ink: #0e1626;
+      --danger: #ff8a7a;
+      --ok: #52d1a2;
+      --focus: #6d8dff;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  h1, h2 { font-family: "Bricolage Grotesque", "IBM Plex Sans", system-ui, sans-serif; margin: 0; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 20px 64px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+  h1 { font-size: clamp(2rem, 5vw, 3.2rem); line-height: 1.05; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); margin: 8px 0 0; max-width: 46ch; }
+
+  .status { display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--muted); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+  .status[data-state="ok"] .dot { background: var(--ok); }
+  .status[data-state="err"] .dot { background: var(--danger); }
+  .status[data-state="busy"] .dot { background: var(--accent); }
+
+  details.server { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 20px; }
+  details.server summary { cursor: pointer; padding: 12px 16px; font-weight: 500; }
+  details.server .body { padding: 0 16px 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+  details.server .field { flex: 1 1 320px; }
+
+  .layout { display: grid; grid-template-columns: 340px 1fr; gap: 24px; align-items: start; }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 20px; }
+  .form-panel { position: sticky; top: 16px; }
+  @media (max-width: 860px) { .form-panel { position: static; } }
+  .panel h2 { font-size: 1.35rem; margin-bottom: 16px; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  label { font-weight: 500; font-size: 0.92rem; }
+  input {
+    font: inherit; color: inherit; background: var(--bg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; width: 100%;
+  }
+  input::placeholder { color: var(--muted); }
+  input:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 3px solid var(--focus); outline-offset: 2px;
+  }
+
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+  button {
+    font: inherit; font-weight: 600; cursor: pointer; border-radius: 6px;
+    padding: 10px 16px; border: 1px solid var(--line); background: transparent; color: var(--ink);
+  }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button.danger { color: var(--danger); border-color: var(--danger); }
+  button.small { padding: 6px 12px; font-size: 0.9rem; }
+  button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .toolbar h2 { margin: 0; }
+  .toolbar input { max-width: 240px; }
+
+  .list { list-style: none; margin: 0; padding: 0; }
+  .row {
+    display: grid; grid-template-columns: 44px 1fr auto; gap: 14px; align-items: center;
+    padding: 14px 0; border-top: 1px solid var(--line);
+  }
+  .row:first-child { border-top: 0; }
+  .row.editing { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  .avatar {
+    width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+    font-weight: 600; color: var(--accent-ink); background: var(--accent);
+  }
+  .who { min-width: 0; }
+  .who .name { font-weight: 600; overflow-wrap: anywhere; }
+  .who .meta { color: var(--muted); font-size: 0.92rem; overflow-wrap: anywhere; }
+  .actions { display: flex; gap: 8px; }
+  @media (max-width: 520px) {
+    .row { grid-template-columns: 44px 1fr; }
+    .actions { grid-column: 2; }
+  }
+
+  .empty { color: var(--muted); padding: 28px 0 12px; }
+  .msg { min-height: 1.4em; margin-top: 12px; font-size: 0.92rem; }
+  .msg.err { color: var(--danger); }
+  .msg.ok { color: var(--ok); }
+  .count { color: var(--muted); font-size: 0.92rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Student directory</h1>
+      <p class="sub">Add, edit and remove people stored in your MongoDB database.</p>
+    </div>
+    <div class="status" id="status" data-state="busy" role="status" aria-live="polite">
+      <span class="dot"></span><span id="statusText">Connecting to server…</span>
+    </div>
+  </header>
+
+  <details class="server" id="serverBox">
+    <summary>Server address</summary>
+    <div class="body">
+      <div class="field" style="margin:0">
+        <label for="apiUrl">API base URL</label>
+        <input id="apiUrl" type="url" placeholder="https://your-app.onrender.com" autocomplete="off">
+      </div>
+      <button id="saveUrl" type="button">Save and reload list</button>
+    </div>
+  </details>
+
+  <div class="layout">
+    <section class="panel form-panel" aria-labelledby="formTitle">
+      <h2 id="formTitle">Add a user</h2>
+      <form id="userForm" novalidate>
+        <div class="field">
+          <label for="fullName">Full name</label>
+          <input id="fullName" name="fullName" type="text" placeholder="Asha Verma" required autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="emailAddress">Email address</label>
+          <input id="emailAddress" name="emailAddress" type="email" placeholder="asha@example.com" required autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="mobileNo">Mobile number</label>
+          <input id="mobileNo" name="mobileNo" type="tel" placeholder="9876543210" required autocomplete="off">
+        </div>
+        <div class="btn-row">
+          <button class="primary" id="submitBtn" type="submit">Add user</button>
+          <button id="cancelBtn" type="button" hidden>Cancel edit</button>
+        </div>
+        <div class="msg" id="formMsg" role="status" aria-live="polite"></div>
+      </form>
+    </section>
+
+    <section class="panel" aria-labelledby="listTitle">
+      <div class="toolbar">
+        <div>
+          <h2 id="listTitle">People</h2>
+          <span class="count" id="count"></span>
+        </div>
+        <input id="search" type="search" placeholder="Search by name or email" aria-label="Search users">
+      </div>
+      <ul class="list" id="list"></ul>
+      <div class="empty" id="empty" hidden></div>
+    </section>
+  </div>
+</div>
+
+<script>
+  // Set this to your Render URL once, e.g. "https://mongodb-crud-app-xxxx.onrender.com"
+  // You can also paste it into the "Server address" box on the page.
+  const DEFAULT_API_BASE = "https://mongodb-crud-app-pktj.onrender.com/";
+
+  const $ = (id) => document.getElementById(id);
+  const state = { users: [], editingId: null, filter: "" };
+
+  function getBase() {
+    let saved = "";
+    try { saved = localStorage.getItem("apiBase") || ""; } catch (e) {}
+    return (saved || DEFAULT_API_BASE).replace(/\/+$/, "");
+  }
+  function setBase(url) {
+    try { localStorage.setItem("apiBase", url); } catch (e) {}
+  }
+
+  function setStatus(kind, text) {
+    $("status").dataset.state = kind;
+    $("statusText").textContent = text;
+  }
+  function setMsg(text, kind) {
+    const el = $("formMsg");
+    el.textContent = text || "";
+    el.className = "msg" + (kind ? " " + kind : "");
+  }
+
+  async function api(path, options) {
+    const base = getBase();
+    if (!base) throw new Error("Add your server address first (open “Server address” above).");
+    let res;
+    try {
+      res = await fetch(base + path, options);
+    } catch (e) {
+      throw new Error("Can't reach the server. If it was idle, wait a minute and try again.");
+    }
+    let data;
+    try { data = await res.json(); } catch (e) { throw new Error("The server sent an unexpected response."); }
+    if (!data.success) {
+      const m = typeof data.message === "string" ? data.message : "The server rejected the request. Check the fields and try again.";
+      throw new Error(m);
+    }
+    return data;
+  }
+
+  const jsonHeaders = { "Content-Type": "application/json" };
+
+  async function loadUsers() {
+    setStatus("busy", "Connecting to server… free servers can take up to a minute to wake up.");
+    try {
+      const data = await api("/user/get");
+      state.users = Array.isArray(data.data) ? data.data : [];
+      setStatus("ok", "Connected");
+      render();
+    } catch (e) {
+      setStatus("err", e.message);
+      state.users = [];
+      render();
+    }
+  }
+
+  function initials(name) {
+    const parts = String(name || "?").trim().split(/\s+/).slice(0, 2);
+    return parts.map((p) => p.charAt(0).toUpperCase()).join("") || "?";
+  }
+
+  function render() {
+    const list = $("list");
+    list.textContent = "";
+    const q = state.filter.trim().toLowerCase();
+    const shown = state.users.filter((u) =>
+      !q || (u.fullName || "").toLowerCase().includes(q) || (u.emailAddress || "").toLowerCase().includes(q));
+
+    $("count").textContent = state.users.length
+      ? shown.length + " of " + state.users.length + " shown"
+      : "";
+
+    const empty = $("empty");
+    if (!shown.length) {
+      empty.hidden = false;
+      empty.textContent = state.users.length
+        ? "No one matches that search."
+        : "No users yet. Use the form to add the first one.";
+    } else {
+      empty.hidden = true;
+    }
+
+    shown.forEach((u) => {
+      const li = document.createElement("li");
+      li.className = "row" + (u._id === state.editingId ? " editing" : "");
+
+      const av = document.createElement("div");
+      av.className = "avatar";
+      av.textContent = initials(u.fullName);
+      av.setAttribute("aria-hidden", "true");
+
+      const who = document.createElement("div");
+      who.className = "who";
+      const name = document.createElement("div");
+      name.className = "name";
+      name.textContent = u.fullName;
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = u.emailAddress + "  |  " + u.mobileNo;
+      who.append(name, meta);
+
+      const actions = document.createElement("div");
+      actions.className = "actions";
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "small";
+      edit.textContent = "Edit";
+      edit.setAttribute("aria-label", "Edit " + u.fullName);
+      edit.addEventListener("click", () => startEdit(u));
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "small danger";
+      del.textContent = "Delete";
+      del.setAttribute("aria-label", "Delete " + u.fullName);
+      del.addEventListener("click", () => removeUser(u));
+      actions.append(edit, del);
+
+      li.append(av, who, actions);
+      list.append(li);
+    });
+  }
+
+  function startEdit(u) {
+    state.editingId = u._id;
+    $("fullName").value = u.fullName || "";
+    $("emailAddress").value = u.emailAddress || "";
+    $("mobileNo").value = u.mobileNo || "";
+    $("formTitle").textContent = "Edit user";
+    $("submitBtn").textContent = "Save changes";
+    $("cancelBtn").hidden = false;
+    setMsg("");
+    render();
+    $("fullName").focus();
+    $("userForm").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function resetForm() {
+    state.editingId = null;
+    $("userForm").reset();
+    $("formTitle").textContent = "Add a user";
+    $("submitBtn").textContent = "Add user";
+    $("cancelBtn").hidden = true;
+    render();
+  }
+
+  async function removeUser(u) {
+    if (!confirm("Delete " + u.fullName + "? This can't be undone.")) return;
+    try {
+      await api("/user/del/" + encodeURIComponent(u._id), { method: "DELETE" });
+      if (state.editingId === u._id) resetForm();
+      setMsg("Deleted " + u.fullName + ".", "ok");
+      await loadUsers();
+    } catch (e) {
+      setMsg(e.message, "err");
+    }
+  }
+
+  $("userForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const body = {
+      fullName: $("fullName").value.trim(),
+      emailAddress: $("emailAddress").value.trim(),
+      mobileNo: $("mobileNo").value.trim()
+    };
+    if (!body.fullName || !body.emailAddress || !body.mobileNo) {
+      setMsg("Fill in the name, email and mobile number.", "err");
+      return;
+    }
+    const btn = $("submitBtn");
+    btn.disabled = true;
+    const editing = state.editingId;
+    try {
+      if (editing) {
+        await api("/user/update/" + encodeURIComponent(editing), {
+          method: "PUT", headers: jsonHeaders, body: JSON.stringify(body)
+        });
+        setMsg("Saved changes to " + body.fullName + ".", "ok");
+      } else {
+        await api("/user/add-user", {
+          method: "POST", headers: jsonHeaders, body: JSON.stringify(body)
+        });
+        setMsg("Added " + body.fullName + ".", "ok");
+      }
+      resetForm();
+      await loadUsers();
+    } catch (e) {
+      setMsg(e.message, "err");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  $("cancelBtn").addEventListener("click", () => { resetForm(); setMsg(""); });
+  $("search").addEventListener("input", (e) => { state.filter = e.target.value; render(); });
+
+  $("saveUrl").addEventListener("click", () => {
+    const v = $("apiUrl").value.trim();
+    setBase(v);
+    loadUsers();
+  });
+
+  $("apiUrl").value = getBase();
+  if (!getBase()) {
+    $("serverBox").open = true;
+    setStatus("err", "No server address yet. Paste your Render URL below.");
+    render();
+  } else {
+    loadUsers();
+  }
+</script>
+</body>
+</html>
